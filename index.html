@@ -370,8 +370,8 @@
         <li><strong>Load Rules</strong> to bring in your saved KRAs &amp; rules (or add KRAs manually on the right).</li>
         <li><strong>Import Timesheet</strong> — your HaloPSA CSV; confirm the week's Monday date when asked.</li>
         <li><strong>Drag</strong> a ticket from the left into a KRA to file it and create a rule for future imports. Click a KRA to expand it.</li>
-        <li><strong>“Quick Time”</strong> entries file themselves automatically.</li>
-        <li><strong>Dashboard</strong> (bottom-right) — hours per KRA by day / week / month / quarter / year, re-orderable, with XLSX export.</li>
+        <li><strong>“Quick Time”</strong> entries file themselves automatically, split into a KRA per sub-type (Internal Meeting, Peer Support, Training, etc).</li>
+        <li><strong>Dashboard</strong> (bottom-centre) — hours per KRA by day / week / month / quarter / year, re-orderable, with XLSX export.</li>
         <li><strong>Export Rules</strong> — the button highlights when you have unsaved changes; save over your rules file to keep them.</li>
       </ol>
     </div>
@@ -399,7 +399,8 @@
    ============================================================ */
 const STORAGE_KEY='kra_categoriser_v2';
 const CONFIG_FILENAME='halopsa-kra-config.json';
-const QUICKTIME_CAT_NAME='Quick Time - Internal meetings, training etc';
+const QUICKTIME_CAT_PREFIX='Quick Time - ';
+const QUICKTIME_DEFAULT_SUB='Other';
 const PALETTE=['#D69447','#3F7A78','#E07050','#7CC4A1','#E9A85C','#C9A0DC','#6FB3D6','#D4B95E','#B97A2E','#9CA98C','#CC8FA6','#5FB3A8'];
 
 let state={tickets:{},entries:{},categories:[],rules:{},meta:{created:null,ticketUrlBase:''},ui:{collapsed:{},kraSort:'default',dashMetric:'total'}};
@@ -452,17 +453,26 @@ function tryParseDateHeader(h){ h=h.trim(); let m=h.match(/(\d{4})-(\d{1,2})-(\d
   m=h.match(/(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})/); if(m){ let y=+m[3]; if(y<100)y+=2000; return toISO(new Date(y,+m[2]-1,+m[1])); } return null; }
 
 /* ---------- Quick Time auto-classify ---------- */
-function ensureQuickTimeCategory(){
-  let c=state.categories.find(x=>x.name===QUICKTIME_CAT_NAME)||state.categories.find(x=>/quick\s*time/i.test(x.name));
-  if(!c){ c={id:uid(),name:QUICKTIME_CAT_NAME,color:'#E9A85C'}; state.categories.push(c); }
+/* Quick Time entries carry their own sub-type in the CSV's "Ticket Category" column
+   (e.g. "Timesheet>Internal Meeting"). Split them into one KRA per sub-type instead of
+   a single catch-all bucket. Only Quick Time tickets use this column — other ticket
+   types are never auto-classified from it. */
+function quickTimeSubName(t){
+  const raw=(t.category||'').trim(); if(!raw) return QUICKTIME_DEFAULT_SUB;
+  const leaf=raw.split('>').pop().trim();
+  return leaf||QUICKTIME_DEFAULT_SUB;
+}
+function ensureQuickTimeCategory(subName){
+  const name=QUICKTIME_CAT_PREFIX+subName;
+  let c=state.categories.find(x=>x.name===name);
+  if(!c){ c={id:uid(),name,color:nextColor()}; state.categories.push(c); }
   return c.id;
 }
 function isQuickTime(t){ return /quick\s*time/i.test(t.description||''); }
 function autoClassifyQuickTime(){
   const targets=Object.values(state.tickets).filter(t=>!state.rules[t.ticketId]&&isQuickTime(t));
   if(!targets.length) return 0;
-  const cid=ensureQuickTimeCategory();
-  targets.forEach(t=>state.rules[t.ticketId]=cid);
+  targets.forEach(t=>{ state.rules[t.ticketId]=ensureQuickTimeCategory(quickTimeSubName(t)); });
   return targets.length;
 }
 
@@ -476,7 +486,7 @@ function prepareImport(text,fname){
   const rows=parseCSV(text); if(rows.length<2){ toast('No data rows found in that CSV','warn'); return; }
   const header=rows[0].map(h=>h.trim()); const lower=header.map(h=>h.toLowerCase());
   const idx=names=>{ for(const n of names){ const i=lower.indexOf(n); if(i>=0)return i; } return -1; };
-  const ci={customer:idx(['customer name','customer','client','company']),workType:idx(['work type','worktype','type']),ticket:idx(['ticket id','ticketid','ticket','id']),desc:idx(['ticket name','description','summary','details']),total:idx(['hours','total','total hours']),date:idx(['date'])};
+  const ci={customer:idx(['customer name','customer','client','company']),workType:idx(['work type','worktype','type']),ticket:idx(['ticket id','ticketid','ticket','id']),desc:idx(['ticket name','description','summary','details']),total:idx(['hours','total','total hours']),date:idx(['date']),category:idx(['ticket category','category'])};
   if(ci.ticket<0){ toast('Could not find a "Ticket ID" column','err'); return; }
   pendingImport={rows,ci,fname};
   // New HaloPSA "All Time Entries" export: one row per logged entry with its own Date column
@@ -507,9 +517,9 @@ function finalizeImport(weekStart){
   let added=0,auto=0;
   for(let i=1;i<rows.length;i++){ const row=rows[i]; if(!row||!row.length)continue;
     const ticketId=String((row[ci.ticket]||'').trim()); if(!ticketId)continue;
-    const desc=ci.desc>=0?(row[ci.desc]||'').trim():''; const cust=ci.customer>=0?(row[ci.customer]||'').trim():''; const wt=ci.workType>=0?(row[ci.workType]||'').trim():'';
+    const desc=ci.desc>=0?(row[ci.desc]||'').trim():''; const cust=ci.customer>=0?(row[ci.customer]||'').trim():''; const wt=ci.workType>=0?(row[ci.workType]||'').trim():''; const cat=ci.category>=0?(row[ci.category]||'').trim():'';
     const isNew=!state.tickets[ticketId];
-    state.tickets[ticketId]={ticketId,customer:cust||(state.tickets[ticketId]||{}).customer||'',workType:wt||(state.tickets[ticketId]||{}).workType||'',description:desc||(state.tickets[ticketId]||{}).description||''};
+    state.tickets[ticketId]={ticketId,customer:cust||(state.tickets[ticketId]||{}).customer||'',workType:wt||(state.tickets[ticketId]||{}).workType||'',description:desc||(state.tickets[ticketId]||{}).description||'',category:cat||(state.tickets[ticketId]||{}).category||''};
     if(isNew){ added++; if(state.rules[ticketId])auto++; }
     let daySum=0;
     resolved.forEach(rc=>{ const v=parseFloat(row[rc.col]); if(!isNaN(v)&&v!==0){ daySum+=v; state.entries[`${ticketId}|${rc.date}`]={ticketId,date:rc.date,hours:v}; } });
@@ -536,9 +546,9 @@ function finalizeEntryImport(){
   Object.keys(state.entries).forEach(k=>{ const e=state.entries[k]; if(e.date&&incomingDates.has(e.date)) delete state.entries[k]; });
   let added=0,auto=0; const sums={};
   parsed.forEach(({row,ticketId,date})=>{
-    const desc=ci.desc>=0?(row[ci.desc]||'').trim():''; const cust=ci.customer>=0?(row[ci.customer]||'').trim():''; const wt=ci.workType>=0?(row[ci.workType]||'').trim():'';
+    const desc=ci.desc>=0?(row[ci.desc]||'').trim():''; const cust=ci.customer>=0?(row[ci.customer]||'').trim():''; const wt=ci.workType>=0?(row[ci.workType]||'').trim():''; const cat=ci.category>=0?(row[ci.category]||'').trim():'';
     const isNew=!state.tickets[ticketId];
-    state.tickets[ticketId]={ticketId,customer:cust||(state.tickets[ticketId]||{}).customer||'',workType:wt||(state.tickets[ticketId]||{}).workType||'',description:desc||(state.tickets[ticketId]||{}).description||''};
+    state.tickets[ticketId]={ticketId,customer:cust||(state.tickets[ticketId]||{}).customer||'',workType:wt||(state.tickets[ticketId]||{}).workType||'',description:desc||(state.tickets[ticketId]||{}).description||'',category:cat||(state.tickets[ticketId]||{}).category||''};
     if(isNew){ added++; if(state.rules[ticketId])auto++; }
     const hrs=parseFloat(row[ci.total]); if(isNaN(hrs)||hrs===0) return;
     const key=`${ticketId}|${date}`;
