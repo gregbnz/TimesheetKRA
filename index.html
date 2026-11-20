@@ -113,6 +113,9 @@
   .ticket .cust{font-size:11px;color:var(--muted-2);display:flex;align-items:center;gap:5px}
   .ticket .cust .dot{width:5px;height:5px;border-radius:50%;background:var(--muted-2);flex:0 0 auto}
   .ticket .grip{position:absolute;top:0;right:0;bottom:0;width:22px;display:flex;align-items:center;justify-content:center;color:#46443d;font-size:14px;pointer-events:none}
+  .ticket .kra-tag{display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 20px);margin-top:6px;font-size:11px;font-weight:600;color:var(--text);
+    background:color-mix(in srgb,var(--kc) 14%,transparent);border:0.5px solid color-mix(in srgb,var(--kc) 45%,transparent);border-radius:6px;padding:2px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ticket .kra-tag .sw{width:8px;height:8px;border-radius:2px;background:var(--kc);flex:0 0 auto}
   .ticket.mini{padding:8px 10px;margin:6px 0}
   .ticket.mini .desc{font-size:12px}
   .ticket .unassign{position:absolute;top:7px;right:7px;width:20px;height:20px;border-radius:6px;border:0.5px solid var(--border);background:var(--panel-3);color:var(--muted);font-size:12px;line-height:1;display:none;align-items:center;justify-content:center;cursor:pointer;padding:0}
@@ -195,6 +198,26 @@
   .barrow .track i{display:block;height:100%;border-radius:6px;transition:width .35s}
   .barrow .val{width:140px;text-align:right;font-weight:600;font-size:12.5px}
   .barrow .val .sharepct{color:var(--muted-2);font-weight:500}
+  .trend-head{margin-top:30px}
+  .trend-head .sub{font-size:12px;color:var(--muted-2)}
+  .trend{background:var(--panel-2);border:0.5px solid var(--border-soft);border-radius:12px;padding:10px 8px 4px}
+  .trend-svg{display:block;width:100%;height:auto}
+  .trend-svg .grid{stroke:var(--border);stroke-width:1}
+  .trend-svg .selband{fill:var(--accent-soft)}
+  .trend-svg .ylab{fill:var(--muted-2);font-size:11px;text-anchor:end}
+  .trend-svg .xlab{fill:var(--muted-2);font-size:11px;text-anchor:middle}
+  .trend-svg .ln polyline{fill:none;stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}
+  .trend-svg .ln{transition:opacity .15s;cursor:pointer}
+  .trend.hl .ln{opacity:.12} .trend.hl .ln.on{opacity:1}
+  .trend.hl .ln.on polyline{stroke-width:3.2}
+  .trend-legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center}
+  .trend-legend .lg{height:26px;padding:0 9px;font-size:12px;gap:6px;background:var(--panel-2);border-color:var(--border)}
+  .trend-legend .lg .sw{width:9px;height:9px;border-radius:2px}
+  .trend-legend .lg.off{opacity:.4}
+  .trend-legend .lg.off .sw{background:transparent!important;border:1px solid var(--muted-2)}
+  .trend-legend .lg-tools{font-size:12px;color:var(--muted-2);margin-left:6px}
+  .trend-legend .lg-tools a{color:var(--muted);cursor:pointer}
+  .trend-legend .lg-tools a:hover{color:var(--accent-hi)}
 
   .field{margin:14px 0}
   .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
@@ -241,7 +264,7 @@
     <div class="wordmark"><b>KRA&nbsp;CATEGORISER<span>.</span></b></div>
   </div>
   <div class="title">
-    <h1>Timesheet KRA Categoriser <span class="ver">v1.1</span></h1>
+    <h1>Timesheet KRA Categoriser <span class="ver">v1.2</span></h1>
     <p>Drag tickets into your Key Responsibility Areas — rules auto-apply to future imports</p>
   </div>
   <div class="spacer"></div>
@@ -345,6 +368,7 @@
         <button data-g="month">Month</button><button data-g="quarter" class="active">Quarter</button>
       </div>
       <button onclick="exportXlsx()" class="btn-primary"><span class="ico">⤓</span> Export XLSX</button>
+      <button onclick="exportDashImage()" class="btn-primary" title="Save the dashboard (both charts) as a PNG image"><span class="ico">🖼</span> Export image</button>
       <button class="btn-ghost" onclick="closeDashboard()">✕</button>
     </div>
     <div class="modal-body" id="dashBody"></div>
@@ -364,7 +388,7 @@
         <li><strong>Import Timesheet</strong> — your HaloPSA CSV; confirm the week's Monday date when asked.</li>
         <li><strong>Drag</strong> a ticket from the left into a KRA to file it and create a rule for future imports. Click a KRA to expand it.</li>
         <li><strong>“Quick Time”</strong> entries file themselves automatically, split into a KRA per sub-type (Internal Meeting, Peer Support, Training, etc).</li>
-        <li><strong>Dashboard</strong> (bottom-centre) — hours per KRA for a selected day / week / month / quarter (defaults to the current one, ◀ ▶ to step), shown as avg / week by default, with XLSX export.</li>
+        <li><strong>Dashboard</strong> (bottom-centre) — hours per KRA for a selected day / week / month / quarter (defaults to the current one, ◀ ▶ to step), shown as avg / week by default, plus a monthly trend line per KRA (click legend items to show / hide). Export to XLSX or as an image.</li>
         <li><strong>Export Rules</strong> — the button highlights when you have unsaved changes; save over your rules file to keep them.</li>
       </ol>
     </div>
@@ -661,7 +685,7 @@ function render(){
   const leftList=document.getElementById('leftList'); document.getElementById('leftCount').textContent=left.length;
   if(tickets.length===0) leftList.innerHTML=`<div class="empty"><b>No timesheet loaded</b>Click <strong>Import Timesheet</strong> to load your HaloPSA CSV.</div>`;
   else if(left.length===0) leftList.innerHTML=`<div class="empty"><b>${search?'No matches':'All sorted! 🎉'}</b>${search?'Try a different search.':'Every ticket is categorised. Tick “Show categorised” to see them all.'}</div>`;
-  else leftList.innerHTML=left.map(t=>itemCard({ids:[t.ticketId],desc:t.description,cust:t.customer,wt:t.workType,qt:isQuickTime(t),total:t.total,mini:false})).join('');
+  else leftList.innerHTML=left.map(t=>itemCard({ids:[t.ticketId],desc:t.description,cust:t.customer,wt:t.workType,qt:isQuickTime(t),total:t.total,mini:false,kra:state.categories.find(c=>c.id===state.rules[t.ticketId])})).join('');
 
   document.getElementById('dashBtn').style.display=Object.keys(state.tickets).length>0?'inline-flex':'none';
   document.getElementById('catCount').textContent=state.categories.length;
@@ -703,6 +727,7 @@ function itemCard(o){ const ids=o.ids; const dt=esc(ids.join('|'));
     <div class="row1">${idTag}${wt}${qt}<span class="hrs">${fmtHrs(o.total)}<small> h</small></span></div>
     <div class="desc">${esc(o.desc)||'<em style="color:var(--muted-2)">No description</em>'}</div>
     <div class="cust"><span class="dot"></span>${esc(o.cust)||'—'}</div>
+    ${o.kra?`<div class="kra-tag" style="--kc:${o.kra.color}" title="Allocated to ${esc(o.kra.name)}"><span class="sw"></span>${esc(o.kra.name)}</div>`:''}
     ${o.mini?`<button class="unassign" title="Remove from this KRA" onclick="unassignItem('${dt}')">✕</button>`:`<div class="grip">⋮⋮</div>`}
   </div>`; }
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
@@ -798,9 +823,143 @@ function renderDashboard(){
   const bars=`<div class="barchart"><div class="barchart-head"><h4>KRA breakdown</h4>${sel}</div>`+(grand===0?`<div class="empty"><b>No time logged</b>Nothing recorded for this ${dashGran}. Use ◀ ▶ to pick another.</div>`:rows.map(r=>{ const v=barVal(r); const pcw=Math.round(v/maxV*100); const sh=sumV>0?Math.round(v/sumV*100):0;
     return `<div class="barrow"><span class="lab kra-hover" data-cat="${r.id}"><span class="sw" style="background:${r.color}"></span>${esc(r.name)}</span><span class="track"><i style="width:${pcw}%;background:${r.color}"></i></span><span class="val">${barMetric==='count'?Math.round(v)+' tix':fmtHrs(v)+barUnit}<span class="sharepct"> · ${sh}%</span></span></div>`; }).join(''))+`</div>`;
 
-  body.innerHTML=cards+bars;
+  body.innerHTML=cards+bars+trendHtml();
 }
 function dcard(k,v,cls){return `<div class="dash-card ${cls||''}"><div class="k">${k}</div><div class="v">${v}</div></div>`;}
+
+/* ---------- Monthly trend line chart (all months, one line per KRA) ---------- */
+let trendHidden=new Set();
+function trendData(){
+  const dates=Object.values(state.entries).map(e=>e.date).filter(Boolean).sort();
+  if(!dates.length) return null;
+  const months=[]; let [y,m]=dates[0].slice(0,7).split('-').map(Number); const [ey,em]=dates.at(-1).slice(0,7).split('-').map(Number);
+  while(y<ey||(y===ey&&m<=em)){ months.push({key:y+'-'+pad2(m),label:`${MON[m-1]} ${String(y).slice(2)}`}); if(++m>12){m=1;y++;} }
+  const idx={}; months.forEach((mo,i)=>idx[mo.key]=i);
+  const vals={}; Object.values(state.entries).forEach(e=>{ const cid=state.rules[e.ticketId]; if(!cid||!e.date) return;
+    (vals[cid]||(vals[cid]=months.map(()=>0)))[idx[e.date.slice(0,7)]]+=e.hours; });
+  const series=state.categories.filter(c=>vals[c.id]).map(c=>({id:c.id,name:c.name,color:c.color,vals:vals[c.id]}));
+  // months covered by the dashboard's selected period (shaded)
+  const sk=selectedDashKey(); let selM;
+  if(dashGran==='week'){ const mon=parseISO(sk); selM=[sk.slice(0,7),toISO(addDays(mon,6)).slice(0,7)]; }
+  else if(dashGran==='day') selM=[sk.slice(0,7)];
+  else selM=months.filter(mo=>periodOf(mo.key+'-01',dashGran).key===sk).map(mo=>mo.key);
+  const sel=months.map(mo=>selM.includes(mo.key));
+  return {months,series,sel,curIdx:idx[toISO(new Date()).slice(0,7)]};
+}
+function niceScale(max){ if(max<=0) return {max:1,step:0.25};
+  const raw=max/5, p=Math.pow(10,Math.floor(Math.log10(raw))); const step=[1,2,2.5,5,10].map(k=>k*p).find(s=>s>=raw);
+  return {max:Math.ceil(max/step)*step,step}; }
+/* Shared geometry so the on-screen SVG and the exported image match */
+function trendLayout(td,W,H){
+  const L=52,R=18,T=14,B=30, n=td.months.length, iw=W-L-R, ih=H-T-B;
+  const vis=td.series.filter(s=>!trendHidden.has(s.id));
+  const sc=niceScale(Math.max(0,...vis.flatMap(s=>s.vals)));
+  const x=i=>n>1?L+i*iw/(n-1):L+iw/2, y=v=>T+ih-(v/sc.max)*ih;
+  const half=n>1?iw/(n-1)/2:iw/2;
+  const ticks=[]; for(let v=0;v<=sc.max+1e-9;v+=sc.step) ticks.push(v);
+  const every=Math.max(1,Math.ceil(n/14));
+  return {L,R,T,B,iw,ih,x,y,half,ticks,every,vis};
+}
+function trendHtml(){
+  const td=trendData(); if(!td) return '';
+  const head=`<div class="barchart-head trend-head"><h4>Monthly hours by KRA</h4><span class="sub">Shaded = selected ${dashGran}${td.curIdx!==undefined?' · current month is month-to-date':''}</span></div>`;
+  if(!td.series.length) return head+`<div class="empty"><b>No categorised hours yet</b>Assign tickets to KRAs to see monthly trends.</div>`;
+  const W=1000,H=320,g=trendLayout(td,W,H); const fmt=v=>Number.isInteger(v)?v:v.toFixed(1);
+  let s=`<svg viewBox="0 0 ${W} ${H}" class="trend-svg" role="img" aria-label="Monthly hours by KRA">`;
+  td.sel.forEach((on,i)=>{ if(on) s+=`<rect class="selband" x="${Math.max(g.L,g.x(i)-g.half)}" y="${g.T}" width="${Math.min(g.x(i)+g.half,W-g.R)-Math.max(g.L,g.x(i)-g.half)}" height="${g.ih}"/>`; });
+  g.ticks.forEach(v=>{ s+=`<line class="grid" x1="${g.L}" x2="${W-g.R}" y1="${g.y(v)}" y2="${g.y(v)}"/><text class="ylab" x="${g.L-8}" y="${g.y(v)+4}">${fmt(v)}</text>`; });
+  td.months.forEach((mo,i)=>{ if(i%g.every===0||i===td.months.length-1) s+=`<text class="xlab" x="${g.x(i)}" y="${H-8}">${esc(mo.label)}${i===td.curIdx?'*':''}</text>`; });
+  g.vis.forEach(se=>{ const pts=se.vals.map((v,i)=>`${g.x(i)},${g.y(v)}`).join(' ');
+    s+=`<g class="ln" data-id="${se.id}" onmouseenter="trendHl('${se.id}')" onmouseleave="trendHl(null)"><polyline points="${pts}" stroke="${se.color}"/>`+
+      se.vals.map((v,i)=>`<circle cx="${g.x(i)}" cy="${g.y(v)}" r="3.2" fill="${se.color}"><title>${esc(se.name)} — ${esc(td.months[i].label)}: ${fmtHrs(v)} h</title></circle>`).join('')+`</g>`; });
+  s+=`</svg>`;
+  const legend=`<div class="trend-legend">${td.series.map(se=>`<button class="lg ${trendHidden.has(se.id)?'off':''}" onclick="trendToggle('${se.id}')" onmouseenter="trendHl('${se.id}')" onmouseleave="trendHl(null)" title="Click to show / hide"><span class="sw" style="background:${se.color}"></span>${esc(se.name)}</button>`).join('')}
+    <span class="lg-tools"><a onclick="trendAll(true)">All</a> · <a onclick="trendAll(false)">None</a></span></div>`;
+  return head+`<div class="trend">${s}</div>`+legend;
+}
+function trendHl(id){ const w=document.querySelector('#dashBody .trend'); if(!w) return; w.classList.toggle('hl',!!id&&!trendHidden.has(id)); w.querySelectorAll('.ln').forEach(g=>g.classList.toggle('on',g.dataset.id===id)); }
+function trendToggle(id){ trendHidden.has(id)?trendHidden.delete(id):trendHidden.add(id); renderDashboard(); }
+function trendAll(show){ trendHidden=show?new Set():new Set(state.categories.map(c=>c.id)); renderDashboard(); }
+
+/* ---------- Image export: redraws the dashboard (cards, bars, trend) onto a canvas and saves a PNG ---------- */
+async function exportDashImage(){
+  if(!Object.keys(state.entries).length){ toast('Nothing to export yet','warn'); return; }
+  try{ await document.fonts.ready; }catch(e){}
+  const css=getComputedStyle(document.documentElement), cv=n=>css.getPropertyValue(n).trim();
+  const C={bg:cv('--panel'),card:cv('--panel-2'),track:cv('--panel-3'),border:'rgba(244,239,230,0.12)',text:cv('--text'),muted:cv('--muted'),muted2:cv('--muted-2'),accent:cv('--accent-hi'),teal:cv('--teal'),band:'rgba(214,148,71,0.10)',grid:'rgba(244,239,230,0.08)'};
+  const FONT="'DM Sans',system-ui,'Segoe UI',sans-serif";
+  const metric=state.ui.dashMetric||'avgweek';
+  const {agg,pc,rows,grand,weeksLogged}=dashPeriodAgg(metric);
+  const selKey=selectedDashKey(); const per=dashPeriodList().list.find(x=>x.key===selKey); const perLabel=per?per.label:selKey;
+  const barMetric=(metric==='default'||metric==='name')?'total':metric; const barVal=r=>metricValue(r.id,barMetric,agg,pc);
+  const maxV=Math.max(0.0001,...rows.map(barVal)), sumV=rows.reduce((s,r)=>s+barVal(r),0);
+  const barUnit=barMetric==='count'?' tix':barMetric==='avgmonth'?' h/mo':barMetric==='avgweek'?' h/wk':barMetric==='avgday'?' h/day':' h';
+  const metricLabel={total:'Total hours',avgmonth:'Avg / month',avgweek:'Avg / week',avgday:'Avg / day',count:'Ticket count',name:'Name A–Z'}[metric]||metric;
+  const td=trendData();
+
+  const W=1200,P=32,ROW=26,TH=340; const scale=2;
+  // measure legend height first
+  const mc=document.createElement('canvas').getContext('2d'); mc.font=`500 12px ${FONT}`;
+  let legH=0; if(td&&td.series.length){ let lx=P; legH=22; td.series.forEach(se=>{ const w=mc.measureText(se.name).width+30; if(lx+w>W-P){ lx=P; legH+=22; } lx+=w; }); }
+  const barsH=grand===0?40:rows.length*ROW;
+  const H=P+64+86+40+barsH+30+40+(td&&td.series.length?TH+12+legH:40)+P;
+
+  const cnv=document.createElement('canvas'); cnv.width=W*scale; cnv.height=H*scale; const x=cnv.getContext('2d'); x.scale(scale,scale);
+  const rr=(X,Y,w,h,r)=>{ x.beginPath(); x.roundRect?x.roundRect(X,Y,w,h,r):x.rect(X,Y,w,h); };
+  const fit=(t,max)=>{ if(x.measureText(t).width<=max) return t; while(t.length&&x.measureText(t+'…').width>max) t=t.slice(0,-1); return t+'…'; };
+  x.fillStyle=C.bg; x.fillRect(0,0,W,H); x.textBaseline='alphabetic';
+
+  // Title
+  let y=P+24; x.fillStyle=C.text; x.font=`700 22px ${FONT}`; x.textAlign='left'; x.fillText('KRA Hours Dashboard',P,y);
+  x.textAlign='right'; x.fillStyle=C.accent; x.font=`700 20px ${FONT}`; x.fillText(perLabel,W-P,y);
+  y+=24; x.font=`400 13px ${FONT}`; x.fillStyle=C.muted2; x.fillText(`${dashGran[0].toUpperCase()+dashGran.slice(1)} view · exported ${new Date().toLocaleDateString('en-NZ',{day:'numeric',month:'short',year:'numeric'})}`,W-P,y);
+  x.textAlign='left'; y+=16;
+
+  // Cards
+  const uncatTot=agg.totals['__uncat__']||0;
+  const cards=[['TOTAL HOURS',fmtHrs(grand)+' h',C.accent],['KRAS',String(state.categories.length),C.teal],['WEEKS LOGGED',String(weeksLogged),C.text],['CATEGORISED',(grand>0?Math.round((grand-uncatTot)/grand*100):0)+'%',C.accent]];
+  const cw=(W-2*P-3*14)/4;
+  cards.forEach(([k,v,col],i)=>{ const cx=P+i*(cw+14); rr(cx,y,cw,72,12); x.fillStyle=C.card; x.fill(); x.strokeStyle=C.border; x.lineWidth=1; x.stroke();
+    x.fillStyle=C.muted2; x.font=`500 11px ${FONT}`; x.fillText(k,cx+16,y+24); x.fillStyle=col; x.font=`700 24px ${FONT}`; x.fillText(v,cx+16,y+56); });
+  y+=72+40;
+
+  // Bars
+  x.fillStyle=C.text; x.font=`700 13px ${FONT}`; x.fillText('KRA BREAKDOWN',P,y); x.fillStyle=C.muted2; x.font=`400 12px ${FONT}`; x.fillText('View: '+metricLabel,P+140,y); y+=16;
+  const labW=260, valW=170, tx=P+labW+12, tw=W-P-valW-tx-12;
+  if(grand===0){ x.fillStyle=C.muted; x.font=`400 13px ${FONT}`; x.fillText('No time logged in this period.',P,y+22); y+=40; }
+  else rows.forEach(r=>{ const v=barVal(r), cy=y+ROW/2;
+    x.fillStyle=r.color; rr(P,cy-5,10,10,3); x.fill();
+    x.fillStyle=r.uncat?C.muted:C.text; x.font=`500 12.5px ${FONT}`; x.fillText(fit(r.name,labW-18),P+18,cy+4);
+    x.fillStyle=C.track; rr(tx,cy-9,tw,18,6); x.fill();
+    const bw=Math.max(0,v/maxV*tw); if(bw>0){ x.fillStyle=r.color; rr(tx,cy-9,Math.max(bw,6),18,6); x.fill(); }
+    const sh=sumV>0?Math.round(v/sumV*100):0; x.textAlign='right';
+    x.fillStyle=C.muted2; x.font=`500 12.5px ${FONT}`; const shT=` · ${sh}%`; x.fillText(shT,W-P,cy+4); const shW=x.measureText(shT).width;
+    x.fillStyle=C.text; x.font=`700 12.5px ${FONT}`; x.fillText(barMetric==='count'?Math.round(v)+' tix':fmtHrs(v)+barUnit,W-P-shW,cy+4); x.textAlign='left';
+    y+=ROW; });
+  y+=30;
+
+  // Trend
+  x.fillStyle=C.text; x.font=`700 13px ${FONT}`; x.fillText('MONTHLY HOURS BY KRA',P,y); x.fillStyle=C.muted2; x.font=`400 12px ${FONT}`;
+  if(td) x.fillText(`Shaded = selected ${dashGran}${td.curIdx!==undefined?' · * current month is month-to-date':''}`,P+190,y);
+  y+=16;
+  if(!td||!td.series.length){ x.fillStyle=C.muted; x.font=`400 13px ${FONT}`; x.fillText('No categorised hours yet.',P,y+22); }
+  else{
+    const CW=W-2*P, g=trendLayout(td,CW,TH), ox=P, oy=y; const fmt=v=>Number.isInteger(v)?String(v):v.toFixed(1);
+    x.fillStyle=C.band; td.sel.forEach((on,i)=>{ if(on){ const a=Math.max(g.L,g.x(i)-g.half), b=Math.min(g.x(i)+g.half,CW-g.R); x.fillRect(ox+a,oy+g.T,b-a,g.ih); } });
+    x.strokeStyle=C.grid; x.lineWidth=1; x.font=`400 11px ${FONT}`; x.fillStyle=C.muted2; x.textAlign='right';
+    g.ticks.forEach(v=>{ const yy=oy+g.y(v); x.beginPath(); x.moveTo(ox+g.L,yy); x.lineTo(ox+CW-g.R,yy); x.stroke(); x.fillText(fmt(v),ox+g.L-8,yy+4); });
+    x.textAlign='center'; td.months.forEach((mo,i)=>{ if(i%g.every===0||i===td.months.length-1) x.fillText(mo.label+(i===td.curIdx?'*':''),ox+g.x(i),oy+TH-8); });
+    x.textAlign='left';
+    g.vis.forEach(se=>{ x.strokeStyle=se.color; x.lineWidth=2.2; x.lineJoin='round'; x.beginPath(); se.vals.forEach((v,i)=>{ const px=ox+g.x(i),py=oy+g.y(v); i?x.lineTo(px,py):x.moveTo(px,py); }); x.stroke();
+      x.fillStyle=se.color; se.vals.forEach((v,i)=>{ x.beginPath(); x.arc(ox+g.x(i),oy+g.y(v),3.2,0,Math.PI*2); x.fill(); }); });
+    y+=TH+12;
+    let lx=P; x.font=`500 12px ${FONT}`;
+    td.series.forEach(se=>{ const w=x.measureText(se.name).width+30; if(lx+w>W-P){ lx=P; y+=22; } const off=trendHidden.has(se.id);
+      x.globalAlpha=off?0.35:1; x.fillStyle=se.color; rr(lx,y+3,10,10,3); x.fill(); x.fillStyle=C.text; x.fillText(se.name,lx+16,y+12); x.globalAlpha=1; lx+=w; });
+  }
+
+  cnv.toBlob(b=>{ if(!b){ toast('Could not create image','err'); return; } downloadBlob(b,`KRA-dashboard-${selKey}.png`); toast(`Saved dashboard image for ${perLabel}`,'ok'); },'image/png');
+}
 
 /* Totals, ticket counts and period counts for the dashboard's selected period, with KRA rows in display order */
 function dashPeriodAgg(metric){
