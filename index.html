@@ -180,18 +180,11 @@
   .dash-card .k{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted-2)}
   .dash-card .v{font-size:22px;font-weight:700;margin-top:2px}
   .dash-card.accent .v{color:var(--accent-hi)} .dash-card.teal .v{color:var(--teal)}
-  .matrix-wrap{overflow-x:auto;border:0.5px solid var(--border);border-radius:12px;background:var(--panel)}
-  table.matrix{border-collapse:collapse;width:100%;font-size:12.5px;min-width:max-content}
-  table.matrix th,table.matrix td{padding:8px 12px;text-align:right;white-space:nowrap;border-bottom:0.5px solid var(--border-soft)}
-  table.matrix th{position:sticky;top:0;background:var(--panel-3);color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;z-index:1}
-  table.matrix th:first-child,table.matrix td:first-child{text-align:left;position:sticky;left:0;background:var(--panel);z-index:1;border-right:0.5px solid var(--border)}
-  table.matrix th:first-child{background:var(--panel-3);z-index:2}
-  table.matrix .kra{display:inline-flex;align-items:center;gap:8px;font-weight:500;color:var(--text)}
-  table.matrix .sw{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
-  table.matrix tr.total-row td{border-top:1px solid var(--border);font-weight:700;background:var(--accent-soft);border-bottom:none}
-  table.matrix tr.uncat td{color:var(--muted)}
-  table.matrix td.rowtot,table.matrix th.rowtot{font-weight:700;color:var(--accent-hi);background:rgba(214,148,71,.05)}
-  table.matrix td.zero{color:var(--muted-2)}
+  .period-nav{margin-left:auto;align-self:center;display:flex;align-items:center;gap:6px}
+  .period-nav .mini-select{min-width:150px;color:var(--text);font-weight:600}
+  .period-nav .navbtn{background:var(--panel-2);border:0.5px solid var(--bdr2);color:var(--text);border-radius:var(--r);width:32px;height:32px;padding:0;font-size:14px;cursor:pointer}
+  .period-nav .navbtn:hover:not(:disabled){background:var(--panel-3)}
+  .period-nav .navbtn:disabled{opacity:.35;cursor:default}
   .barchart{margin-top:18px}
   .barchart-head{display:flex;align-items:center;gap:12px;margin:18px 0 8px}
   .barchart-head h4{margin:0}
@@ -349,7 +342,7 @@
       <div class="spacer"></div>
       <div class="seg" id="granSeg">
         <button data-g="day">Day</button><button data-g="week">Week</button>
-        <button data-g="month" class="active">Month</button><button data-g="quarter">Quarter</button><button data-g="year">Year</button>
+        <button data-g="month">Month</button><button data-g="quarter" class="active">Quarter</button>
       </div>
       <button onclick="exportXlsx()" class="btn-primary"><span class="ico">⤓</span> Export XLSX</button>
       <button class="btn-ghost" onclick="closeDashboard()">✕</button>
@@ -371,7 +364,7 @@
         <li><strong>Import Timesheet</strong> — your HaloPSA CSV; confirm the week's Monday date when asked.</li>
         <li><strong>Drag</strong> a ticket from the left into a KRA to file it and create a rule for future imports. Click a KRA to expand it.</li>
         <li><strong>“Quick Time”</strong> entries file themselves automatically, split into a KRA per sub-type (Internal Meeting, Peer Support, Training, etc).</li>
-        <li><strong>Dashboard</strong> (bottom-centre) — hours per KRA by day / week / month / quarter / year, re-orderable, with XLSX export.</li>
+        <li><strong>Dashboard</strong> (bottom-centre) — hours per KRA for a selected day / week / month / quarter (defaults to the current one, ◀ ▶ to step), shown as avg / week by default, with XLSX export.</li>
         <li><strong>Export Rules</strong> — the button highlights when you have unsaved changes; save over your rules file to keep them.</li>
       </ol>
     </div>
@@ -403,8 +396,9 @@ const QUICKTIME_CAT_PREFIX='Quick Time - ';
 const QUICKTIME_DEFAULT_SUB='Other';
 const PALETTE=['#D69447','#3F7A78','#E07050','#7CC4A1','#E9A85C','#C9A0DC','#6FB3D6','#D4B95E','#B97A2E','#9CA98C','#CC8FA6','#5FB3A8'];
 
-let state={tickets:{},entries:{},categories:[],rules:{},meta:{created:null,ticketUrlBase:''},ui:{collapsed:{},kraSort:'default',dashMetric:'total'}};
-let dashGran='month';
+let state={tickets:{},entries:{},categories:[],rules:{},meta:{created:null,ticketUrlBase:''},ui:{collapsed:{},kraSort:'default',dashMetric:'avgweek'}};
+let dashGran='quarter';
+let dashKey=null; // selected period key for dashGran (null = current period)
 
 /* ---------- Persistence ---------- */
 /* File-driven: rules live in an exported JSON, not the browser. Hours come only from imported timesheets.
@@ -436,7 +430,7 @@ function mergeConfig(data,silent){
   if(data.tickets&&!data.entries) Object.values(data.tickets).forEach(t=>{ if(t&&t.ticketId&&t.total){ const k=`${t.ticketId}|null`; if(!state.entries[k]) state.entries[k]={ticketId:String(t.ticketId),date:null,hours:Number(t.total)||0}; } });
   if(data.meta&&data.meta.created&&!state.meta.created) state.meta.created=data.meta.created;
   if(data.meta&&typeof data.meta.ticketUrlBase==='string') state.meta.ticketUrlBase=data.meta.ticketUrlBase;
-  if(data.ui){ if(data.ui.collapsed) Object.assign(state.ui.collapsed,data.ui.collapsed); if(data.ui.kraSort) state.ui.kraSort=data.ui.kraSort; if(data.ui.dashMetric) state.ui.dashMetric=data.ui.dashMetric; }
+  if(data.ui){ if(data.ui.collapsed) Object.assign(state.ui.collapsed,data.ui.collapsed); if(data.ui.kraSort) state.ui.kraSort=data.ui.kraSort; }
 }
 
 /* ---------- Date helpers ---------- */
@@ -731,26 +725,28 @@ uncat.addEventListener('drop',e=>{ e.preventDefault(); uncat.classList.remove('d
 function periodOf(dateStr,gran){
   if(!dateStr) return {key:'~undated',label:'Undated',sort:'~9999'};
   const dt=parseISO(dateStr);
-  if(gran==='day'){ const wd=WD[(dt.getDay()+6)%7]; return {key:dateStr,label:`${wd} ${dt.getDate()} ${MON[dt.getMonth()]}`,sort:dateStr}; }
-  if(gran==='week'){ const m=mondayOf(dt); const k=toISO(m); return {key:k,label:`w/c ${m.getDate()} ${MON[m.getMonth()]}`,sort:k}; }
+  if(gran==='day'){ const wd=WD[(dt.getDay()+6)%7]; return {key:dateStr,label:`${wd} ${dt.getDate()} ${MON[dt.getMonth()]} ${dt.getFullYear()}`,sort:dateStr}; }
+  if(gran==='week'){ const m=mondayOf(dt); const k=toISO(m); return {key:k,label:`w/c ${m.getDate()} ${MON[m.getMonth()]} ${m.getFullYear()}`,sort:k}; }
   if(gran==='month'){ const k=dt.getFullYear()+'-'+pad2(dt.getMonth()+1); return {key:k,label:`${MON[dt.getMonth()]} ${dt.getFullYear()}`,sort:k}; }
   if(gran==='quarter'){ const q=Math.floor(dt.getMonth()/3)+1; return {key:dt.getFullYear()+'-Q'+q,label:`Q${q} ${dt.getFullYear()}`,sort:dt.getFullYear()+'-'+q}; }
   return {key:''+dt.getFullYear(),label:''+dt.getFullYear(),sort:''+dt.getFullYear()};
 }
-function buildMatrix(gran){ const entries=Object.values(state.entries); const periodMap={};
-  entries.forEach(e=>{ const p=periodOf(e.date,gran); periodMap[p.key]={label:p.label,sort:p.sort}; });
-  const periods=Object.entries(periodMap).sort((a,b)=>a[1].sort<b[1].sort?-1:a[1].sort>b[1].sort?1:0).map(([key,v])=>({key,label:v.label}));
-  const grid={}; let hasUncat=false;
-  entries.forEach(e=>{ const cid=state.rules[e.ticketId]||'__uncat__'; if(cid==='__uncat__')hasUncat=true; const pk=periodOf(e.date,gran).key; (grid[cid]||(grid[cid]={}))[pk]=(grid[cid][pk]||0)+e.hours; });
-  return {periods,grid,hasUncat};
-}
-function openDashboard(){ document.getElementById('dashOverlay').classList.add('show'); renderDashboard(); }
+function openDashboard(){ dashKey=null; document.getElementById('dashOverlay').classList.add('show'); renderDashboard(); }
 function closeDashboard(){ document.getElementById('dashOverlay').classList.remove('show'); hideKtt(); }
-document.getElementById('granSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return; dashGran=b.dataset.g; [...e.currentTarget.children].forEach(x=>x.classList.toggle('active',x===b)); renderDashboard(); });
+document.getElementById('granSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return; dashGran=b.dataset.g; dashKey=null; [...e.currentTarget.children].forEach(x=>x.classList.toggle('active',x===b)); renderDashboard(); });
 function setDashMetric(v){ state.ui.dashMetric=v; renderDashboard(); }
 
-/* Hover a KRA on the dashboard -> top 5 timesheet names by cumulative hours (grouped by name) */
-function topTicketsForCat(catId,n){ n=n||5; const th=ticketHoursMap();
+/* Selectable periods for the current granularity: every period with dated entries, plus the current one */
+function dashPeriodList(){ const m={}; const cur=periodOf(toISO(new Date()),dashGran); m[cur.key]=cur;
+  Object.values(state.entries).forEach(e=>{ if(e.date){ const p=periodOf(e.date,dashGran); if(!m[p.key]) m[p.key]=p; } });
+  return {list:Object.values(m).sort((a,b)=>a.sort<b.sort?-1:a.sort>b.sort?1:0),curKey:cur.key}; }
+function selectedDashKey(){ const {list,curKey}=dashPeriodList(); return list.some(p=>p.key===dashKey)?dashKey:curKey; }
+function setDashPeriod(k){ dashKey=k; renderDashboard(); }
+function stepDashPeriod(d){ const {list}=dashPeriodList(); const i=list.findIndex(p=>p.key===selectedDashKey()); const j=i+d; if(j>=0&&j<list.length){ dashKey=list[j].key; renderDashboard(); } }
+function dashEntries(){ const k=selectedDashKey(); return Object.values(state.entries).filter(e=>e.date&&periodOf(e.date,dashGran).key===k); }
+
+/* Hover a KRA on the dashboard -> top 5 timesheet names by hours in the selected period (grouped by name) */
+function topTicketsForCat(catId,n){ n=n||5; const th={}; dashEntries().forEach(e=>{ th[e.ticketId]=(th[e.ticketId]||0)+e.hours; });
   const pred=catId==='__uncat__'?(t=>!state.rules[t.ticketId]):(t=>state.rules[t.ticketId]===catId);
   const byName={}; Object.values(state.tickets).forEach(t=>{ if(pred(t)){ const nm=t.description||('#'+t.ticketId);
     if(!byName[nm]) byName[nm]={hours:0,customer:t.customer||''}; byName[nm].hours+=(th[t.ticketId]||0); if(!byName[nm].customer&&t.customer) byName[nm].customer=t.customer; } });
@@ -770,71 +766,76 @@ function hideKtt(){ const tt=document.getElementById('ktt'); if(tt)tt.style.disp
 function renderDashboard(){
   const body=document.getElementById('dashBody');
   if(Object.keys(state.entries).length===0){ body.innerHTML=`<div class="empty"><b>No data yet</b>Import a timesheet to see hours by KRA.</div>`; return; }
-  const {periods,grid,hasUncat}=buildMatrix(dashGran);
-  const agg=catAggregates(), pc=periodCounts(); const metric=state.ui.dashMetric||'total';
+  const metric=state.ui.dashMetric||'avgweek';
 
-  let rows=sortCats(state.categories,metric==='default'?'total':metric,agg,pc).map(c=>({id:c.id,name:c.name,color:c.color}));
-  if(hasUncat) rows.push({id:'__uncat__',name:'Uncategorised',color:'#5a564f',uncat:true});
+  // Period picker
+  const {list}=dashPeriodList(); const selKey=selectedDashKey(); const idx=list.findIndex(p=>p.key===selKey);
+  const nav=`<div class="period-nav">
+    <button class="navbtn" title="Previous ${dashGran}" onclick="stepDashPeriod(-1)" ${idx<=0?'disabled':''}>◀</button>
+    <select class="mini-select" onchange="setDashPeriod(this.value)">${list.map(p=>`<option value="${esc(p.key)}" ${p.key===selKey?'selected':''}>${esc(p.label)}</option>`).join('')}</select>
+    <button class="navbtn" title="Next ${dashGran}" onclick="stepDashPeriod(1)" ${idx>=list.length-1?'disabled':''}>▶</button>
+  </div>`;
 
-  const rowTotal=id=>periods.reduce((s,p)=>s+((grid[id]||{})[p.key]||0),0);
-  const colTotal=pk=>rows.reduce((s,r)=>s+((grid[r.id]||{})[pk]||0),0);
-  const grand=rows.reduce((s,r)=>s+rowTotal(r.id),0);
-  const uncatTot=rowTotal('__uncat__');
+  // Aggregates for the selected period only
+  const {agg,pc,rows,grand,weeksLogged}=dashPeriodAgg(metric); const totals=agg.totals; const w={size:weeksLogged};
+  const uncatTot=totals['__uncat__']||0;
 
   const cards=`<div class="dash-cards">
     ${dcard('Total hours',fmtHrs(grand)+' h','accent')}
     ${dcard('KRAs',state.categories.length,'teal')}
-    ${dcard('Periods ('+dashGran+')',periods.length)}
+    ${dcard('Weeks logged',w.size)}
     ${dcard('Categorised',grand>0?Math.round((grand-uncatTot)/grand*100)+'%':'0%','accent')}
+    ${nav}
   </div>`;
-
-  let head=`<tr><th>Key Responsibility Area</th>`+periods.map(p=>`<th>${esc(p.label)}</th>`).join('')+`<th class="rowtot">Total</th><th class="rowtot">Share</th></tr>`;
-  let trs=rows.map(r=>{ const rt=rowTotal(r.id); const sh=grand>0?Math.round(rt/grand*100):0;
-    const cells=periods.map(p=>{ const v=(grid[r.id]||{})[p.key]||0; return `<td class="${v?'':'zero'}">${v?fmtHrs(v):'·'}</td>`; }).join('');
-    return `<tr class="${r.uncat?'uncat':''}"><td><span class="kra kra-hover" data-cat="${r.id}"><span class="sw" style="background:${r.color}"></span>${esc(r.name)}</span></td>${cells}<td class="rowtot">${fmtHrs(rt)}</td><td class="rowtot">${sh}%</td></tr>`; }).join('');
-  let totRow=`<tr class="total-row"><td>Total</td>`+periods.map(p=>`<td>${fmtHrs(colTotal(p.key))}</td>`).join('')+`<td class="rowtot">${fmtHrs(grand)}</td><td class="rowtot">100%</td></tr>`;
-  const table=`<div class="matrix-wrap"><table class="matrix"><thead>${head}</thead><tbody>${trs}${totRow}</tbody></table></div>`;
 
   const metricOpts=[['total','Total hours'],['avgmonth','Avg / month'],['avgweek','Avg / week'],['avgday','Avg / day'],['count','Ticket count'],['name','Name A–Z']];
   const sel=`<select class="mini-select" onchange="setDashMetric(this.value)">${metricOpts.map(([v,l])=>`<option value="${v}" ${metric===v?'selected':''}>View by: ${l}</option>`).join('')}</select>`;
-  const barMetric=metric==='default'?'total':metric;
-  const maxV=Math.max(0.0001,...rows.map(r=>barMetric==='name'?rowTotal(r.id):metricValue(r.id,barMetric,agg,pc)===undefined?0:(r.uncat?(barMetric==='count'?0:rowTotal(r.id)):metricValue(r.id,barMetric,agg,pc))));
-  const barVal=r=>{ if(r.uncat){ if(barMetric==='count')return null; if(barMetric==='avgmonth')return rowTotal(r.id)/pc.nMonths; if(barMetric==='avgweek')return rowTotal(r.id)/pc.nWeeks; if(barMetric==='avgday')return rowTotal(r.id)/pc.nDays; return rowTotal(r.id); } return barMetric==='name'?rowTotal(r.id):metricValue(r.id,barMetric,agg,pc); };
+  const barMetric=(metric==='default'||metric==='name')?'total':metric;
+  const barVal=r=>metricValue(r.id,barMetric,agg,pc);
+  const maxV=Math.max(0.0001,...rows.map(barVal));
   const barUnit=barMetric==='count'?' tix':barMetric==='avgmonth'?' h/mo':barMetric==='avgweek'?' h/wk':barMetric==='avgday'?' h/day':' h';
-  const sumV=rows.reduce((s,r)=>{ const v=barVal(r); return s+(v||0); },0);
-  const bars=`<div class="barchart"><div class="barchart-head"><h4>KRA breakdown</h4>${sel}</div>`+rows.map(r=>{ const v=barVal(r); if(v===null)return ''; const pcw=Math.round(v/maxV*100); const sh=sumV>0?Math.round(v/sumV*100):0;
-    return `<div class="barrow"><span class="lab kra-hover" data-cat="${r.id}"><span class="sw" style="background:${r.color}"></span>${esc(r.name)}</span><span class="track"><i style="width:${pcw}%;background:${r.color}"></i></span><span class="val">${barMetric==='count'?Math.round(v)+' tix':fmtHrs(v)+barUnit}<span class="sharepct"> · ${sh}%</span></span></div>`; }).join('')+`</div>`;
+  const sumV=rows.reduce((s,r)=>s+barVal(r),0);
+  const bars=`<div class="barchart"><div class="barchart-head"><h4>KRA breakdown</h4>${sel}</div>`+(grand===0?`<div class="empty"><b>No time logged</b>Nothing recorded for this ${dashGran}. Use ◀ ▶ to pick another.</div>`:rows.map(r=>{ const v=barVal(r); const pcw=Math.round(v/maxV*100); const sh=sumV>0?Math.round(v/sumV*100):0;
+    return `<div class="barrow"><span class="lab kra-hover" data-cat="${r.id}"><span class="sw" style="background:${r.color}"></span>${esc(r.name)}</span><span class="track"><i style="width:${pcw}%;background:${r.color}"></i></span><span class="val">${barMetric==='count'?Math.round(v)+' tix':fmtHrs(v)+barUnit}<span class="sharepct"> · ${sh}%</span></span></div>`; }).join(''))+`</div>`;
 
-  body.innerHTML=cards+table+bars;
+  body.innerHTML=cards+bars;
 }
 function dcard(k,v,cls){return `<div class="dash-card ${cls||''}"><div class="k">${k}</div><div class="v">${v}</div></div>`;}
 
-/* ---------- XLSX export (dependency-free) ---------- */
+/* Totals, ticket counts and period counts for the dashboard's selected period, with KRA rows in display order */
+function dashPeriodAgg(metric){
+  const es=dashEntries(); const totals={},tix={}; const d=new Set(),w=new Set(),mo=new Set();
+  es.forEach(e=>{ const cid=state.rules[e.ticketId]||'__uncat__'; totals[cid]=(totals[cid]||0)+e.hours; (tix[cid]||(tix[cid]=new Set())).add(e.ticketId);
+    d.add(e.date); w.add(toISO(mondayOf(parseISO(e.date)))); mo.add(e.date.slice(0,7)); });
+  const counts={}; Object.keys(tix).forEach(k=>counts[k]=tix[k].size);
+  const agg={totals,counts}, pc={nDays:Math.max(1,d.size),nWeeks:Math.max(1,w.size),nMonths:Math.max(1,mo.size)};
+  const rows=sortCats(state.categories,metric==='default'?'total':metric,agg,pc).map(c=>({id:c.id,name:c.name,color:c.color}));
+  if(totals['__uncat__']) rows.push({id:'__uncat__',name:'Uncategorised',color:'#5a564f',uncat:true});
+  const grand=Object.values(totals).reduce((s,v)=>s+v,0);
+  return {es,agg,pc,rows,grand,weeksLogged:w.size};
+}
+
+/* ---------- XLSX export (dependency-free) — matches the dashboard's selected period ---------- */
 function exportXlsx(){
-  const {periods,grid,hasUncat}=buildMatrix(dashGran);
-  const agg=catAggregates(),pc=periodCounts();
-  const rowsC=sortCats(state.categories,(state.ui.dashMetric==='default'?'total':state.ui.dashMetric),agg,pc).map(c=>({id:c.id,name:c.name}));
-  if(hasUncat) rowsC.push({id:'__uncat__',name:'Uncategorised'});
-  const rowTotal=id=>periods.reduce((s,p)=>s+((grid[id]||{})[p.key]||0),0);
-  const colTotal=pk=>rowsC.reduce((s,r)=>s+((grid[r.id]||{})[pk]||0),0);
+  const metric=state.ui.dashMetric||'avgweek';
+  const {es,agg,pc,rows,grand}=dashPeriodAgg(metric);
+  const selKey=selectedDashKey(); const p=dashPeriodList().list.find(x=>x.key===selKey); const label=p?p.label:selKey;
   const r2=n=>Math.round(n*100)/100;
 
-  const sum=[['Key Responsibility Area',...periods.map(p=>p.label),'Total']];
-  rowsC.forEach(r=>{ sum.push([r.name,...periods.map(p=>r2((grid[r.id]||{})[p.key]||0)),r2(rowTotal(r.id))]); });
-  sum.push(['Total',...periods.map(p=>r2(colTotal(p.key))),r2(rowsC.reduce((s,r)=>s+rowTotal(r.id),0))]);
-
-  // Averages sheet
-  const avg=[['Key Responsibility Area','Total hours','Tickets','Avg / month','Avg / week','Avg / day']];
-  state.categories.forEach(c=>{ const t=agg.totals[c.id]||0; avg.push([c.name,r2(t),agg.counts[c.id]||0,r2(t/pc.nMonths),r2(t/pc.nWeeks),r2(t/pc.nDays)]); });
+  const sum=[['Key Responsibility Area','Total hours','Tickets','Avg / month','Avg / week','Avg / day','Share']];
+  rows.forEach(r=>{ const t=agg.totals[r.id]||0; sum.push([r.name,r2(t),agg.counts[r.id]||0,r2(t/pc.nMonths),r2(t/pc.nWeeks),r2(t/pc.nDays),grand>0?Math.round(t/grand*100)+'%':'0%']); });
+  const tickets=new Set(es.map(e=>e.ticketId)).size;
+  sum.push(['Total',r2(grand),tickets,r2(grand/pc.nMonths),r2(grand/pc.nWeeks),r2(grand/pc.nDays),'100%']);
+  sum.push([]); sum.push(['Period',label]); sum.push(['Weeks logged',pc.nWeeks]);
 
   const catName=id=>{ const c=state.categories.find(x=>x.id===id); return c?c.name:'Uncategorised'; };
   const det=[['Date','Ticket ID','Work Type','Customer','Description','KRA','Hours']];
-  Object.values(state.entries).sort((a,b)=>{ const d=(a.date||'~')<(b.date||'~')?-1:(a.date||'~')>(b.date||'~')?1:0; return d||(a.ticketId<b.ticketId?-1:1); })
-    .forEach(e=>{ const t=state.tickets[e.ticketId]||{}; det.push([e.date||'Undated',e.ticketId,t.workType||'',t.customer||'',t.description||'',catName(state.rules[e.ticketId]),r2(e.hours)]); });
+  [...es].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.ticketId<b.ticketId?-1:1))
+    .forEach(e=>{ const t=state.tickets[e.ticketId]||{}; det.push([e.date,e.ticketId,t.workType||'',t.customer||'',t.description||'',catName(state.rules[e.ticketId]),r2(e.hours)]); });
 
-  const blob=buildXlsx([{name:'Summary ('+dashGran+')',rows:sum},{name:'Averages',rows:avg},{name:'Detail',rows:det}]);
-  downloadBlob(blob,`KRA-hours-${dashGran}-${toISO(new Date())}.xlsx`);
-  toast('Exported XLSX — Summary, Averages & Detail sheets','ok');
+  const blob=buildXlsx([{name:'Summary',rows:sum},{name:'Detail',rows:det}]);
+  downloadBlob(blob,`KRA-hours-${selKey}.xlsx`);
+  toast(`Exported XLSX for ${label} — Summary & Detail sheets`,'ok');
 }
 const CRC_TABLE=(()=>{let c,t=[];for(let n=0;n<256;n++){c=n;for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);t[n]=c>>>0;}return t;})();
 function crc32(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=CRC_TABLE[(c^b[i])&0xFF]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
@@ -904,7 +905,7 @@ function closeSettings(){ document.getElementById('settingsOverlay').classList.r
 function saveHaloBaseUrl(){ const v=document.getElementById('haloUrlInput').value.trim(); state.meta.ticketUrlBase=v; persist(); closeSettings(); render(); toast(v?'Ticket URL saved — export your rules to keep it':'Ticket URL cleared','ok'); }
 function clearHaloBaseUrl(){ document.getElementById('haloUrlInput').value=''; state.meta.ticketUrlBase=''; persist(); closeSettings(); render(); toast('Ticket URL cleared','ok'); }
 function resetAll(){ if(!confirm('Clear ALL data — imported tickets, KRAs and rules? Export your rules first if you want to keep them.'))return;
-  state={tickets:{},entries:{},categories:[],rules:{},meta:{created:null,ticketUrlBase:''},ui:{collapsed:{},kraSort:'default',dashMetric:'total'}};
+  state={tickets:{},entries:{},categories:[],rules:{},meta:{created:null,ticketUrlBase:''},ui:{collapsed:{},kraSort:'default',dashMetric:'avgweek'}};
   clearDirty(); render(); toast('Cleared everything','warn'); }
 function openImportPrompt(){ document.getElementById('startOverlay').classList.add('show'); }
 function closeStart(){ document.getElementById('startOverlay').classList.remove('show'); }
