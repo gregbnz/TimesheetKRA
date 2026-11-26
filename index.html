@@ -268,7 +268,7 @@
     <div class="wordmark"><b>KRA&nbsp;CATEGORISER<span>.</span></b></div>
   </div>
   <div class="title">
-    <h1>Timesheet KRA Categoriser <span class="ver">v1.2</span></h1>
+    <h1>Timesheet KRA Categoriser <span class="ver">v1.3</span></h1>
     <p>Drag tickets into your Key Responsibility Areas — rules auto-apply to future imports</p>
   </div>
   <div class="toolbar">
@@ -340,7 +340,7 @@
       <h3>Now import your timesheet</h3>
     </div>
     <div class="modal-body">
-      <p>Your KRAs and rules are loaded. Next, import your HaloPSA <strong>timesheet CSV</strong> — tickets you've categorised before are filed automatically, along with Quick Time, presales and SO project entries.</p>
+      <p id="tsLead"></p>
     </div>
     <div class="modal-foot">
       <button class="btn-ghost" onclick="closeTimesheetPrompt()">Later</button>
@@ -1111,8 +1111,12 @@ function resetAll(){ if(!confirm('Clear ALL data — imported tickets, KRAs and 
   clearDirty(); render(); toast('Cleared everything','warn'); }
 function openImportPrompt(){ document.getElementById('startOverlay').classList.add('show'); }
 function closeStart(){ document.getElementById('startOverlay').classList.remove('show'); }
-function startFresh(){ closeStart(); }
-function openTimesheetPrompt(){ document.getElementById('tsOverlay').classList.add('show'); }
+function startFresh(){ closeStart(); if(!Object.keys(state.tickets).length) openTimesheetPrompt(true); }
+function openTimesheetPrompt(fresh){
+  document.getElementById('tsLead').innerHTML=fresh
+    ?`Starting fresh — next, import your HaloPSA <strong>timesheet CSV</strong>. Quick Time, presales and SO project entries are filed into KRAs automatically; you can add your own KRAs on the right and drag the rest in.`
+    :`Your KRAs and rules are loaded. Next, import your HaloPSA <strong>timesheet CSV</strong> — tickets you've categorised before are filed automatically, along with Quick Time, presales and SO project entries.`;
+  document.getElementById('tsOverlay').classList.add('show'); }
 function closeTimesheetPrompt(){ document.getElementById('tsOverlay').classList.remove('show'); }
 function pickTimesheet(){ closeTimesheetPrompt(); document.getElementById('csvInput').click(); }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeHelp(); closeDashboard(); closeStart(); closeTimesheetPrompt(); closeSettings(); if(document.getElementById('weekOverlay').classList.contains('show'))cancelWeek(); } });
