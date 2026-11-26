@@ -50,6 +50,11 @@
   .title p{margin:0;color:var(--muted);font-size:12px}
   header .spacer{flex:1}
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  header .toolbar{flex-wrap:nowrap;flex:0 0 auto}
+  header .title{min-width:0;flex:0 1 auto}
+  header .title p{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  header .title h1{white-space:nowrap}
+  header .brand{flex:0 0 auto}
 
   button,.btn{font-family:inherit;font-size:13px;font-weight:500;border-radius:var(--r);border:0.5px solid var(--bdr2);
     background:var(--bg);color:var(--text);padding:0 14px;height:38px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;
@@ -160,7 +165,7 @@
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:70;padding:24px}
   .overlay.show{display:flex}
   .modal{background:var(--panel);border:0.5px solid var(--border);border-radius:var(--rlg);max-width:640px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:var(--shadow)}
-  .modal.wide{max-width:1120px}
+  .modal.wide{max-width:1260px}
   .modal-head{display:flex;align-items:center;gap:10px;padding:18px 22px;border-bottom:0.5px solid var(--border);position:sticky;top:0;background:var(--panel);z-index:2;flex-wrap:wrap}
   .modal-head h3{margin:0;font-size:16px;font-weight:600}
   .modal-head .spacer{flex:1}
@@ -183,8 +188,9 @@
   .dash-card .k{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted-2)}
   .dash-card .v{font-size:22px;font-weight:700;margin-top:2px}
   .dash-card.accent .v{color:var(--accent-hi)} .dash-card.teal .v{color:var(--teal)}
-  .period-nav{margin-left:auto;align-self:center;display:flex;align-items:center;gap:6px}
-  .period-nav .mini-select{min-width:150px;color:var(--text);font-weight:600}
+  .period-nav{display:flex;align-items:center;gap:6px;margin-right:6px}
+  .period-nav:empty{display:none}
+  .period-nav .mini-select{min-width:150px;height:36px;color:var(--text);font-weight:600}
   .period-nav .navbtn{background:var(--panel-2);border:0.5px solid var(--bdr2);color:var(--text);border-radius:var(--r);width:32px;height:32px;padding:0;font-size:14px;cursor:pointer}
   .period-nav .navbtn:hover:not(:disabled){background:var(--panel-3)}
   .period-nav .navbtn:disabled{opacity:.35;cursor:default}
@@ -233,17 +239,15 @@
   .footer-note a{color:var(--muted);text-decoration:none;cursor:pointer}
   .footer-note a:hover{color:var(--accent-hi)}
   .saved-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
-  .btn-dash{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:40;
-    height:48px;padding:0 28px;border-radius:999px;border:none;
+  .btn-dash{height:42px;padding:0 24px;border-radius:999px;border:none;flex:0 0 auto;
     background:linear-gradient(135deg,var(--accent-hi),var(--accent-lo));color:var(--accent-ink);
     font-weight:700;font-size:14px;letter-spacing:.01em;
-    box-shadow:0 10px 30px rgba(214,148,71,.35),0 2px 10px rgba(0,0,0,.45);
+    box-shadow:0 6px 20px rgba(214,148,71,.30);
     transition:transform .15s,box-shadow .15s,background .15s}
-  .btn-dash .ico{font-size:18px}
-  .btn-dash:hover{background:linear-gradient(135deg,var(--accent-hi),var(--accent-hi));
-    transform:translateX(-50%) translateY(-2px);
-    box-shadow:0 14px 36px rgba(214,148,71,.45),0 4px 14px rgba(0,0,0,.5)}
-  .btn-dash:active{transform:translateX(-50%) translateY(0)}
+  .btn-dash .ico{font-size:17px}
+  .btn-dash:hover{background:linear-gradient(135deg,var(--accent-hi),var(--accent-hi));transform:translateY(-1px);
+    box-shadow:0 10px 26px rgba(214,148,71,.42)}
+  .btn-dash:active{transform:translateY(0)}
   .kra-hover{cursor:help}
   #ktt{position:fixed;z-index:120;pointer-events:none;display:none;background:var(--panel-3);border:0.5px solid var(--bdr2);border-radius:10px;box-shadow:var(--shadow);padding:11px 14px;max-width:560px;font-size:12px}
   #ktt .tt-h{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted-2);margin-bottom:7px;font-weight:600}
@@ -267,10 +271,14 @@
     <h1>Timesheet KRA Categoriser <span class="ver">v1.2</span></h1>
     <p>Drag tickets into your Key Responsibility Areas — rules auto-apply to future imports</p>
   </div>
+  <div class="toolbar">
+    <button onclick="document.getElementById('rulesInput').click()"><span class="ico">⤓</span> Load Rules</button>
+    <button onclick="document.getElementById('csvInput').click()"><span class="ico">＋</span> Import Timesheet</button>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn-dash" id="dashBtn" onclick="openDashboard()" style="display:none"><span class="ico">📊</span> View Dashboard</button>
   <div class="spacer"></div>
   <div class="toolbar">
-    <button class="btn-primary" onclick="document.getElementById('csvInput').click()"><span class="ico">＋</span> Import Timesheet</button>
-    <button onclick="document.getElementById('rulesInput').click()"><span class="ico">⤓</span> Load Rules</button>
     <button id="exportBtn" onclick="exportConfig()"><span class="ico">⤒</span> Export Rules</button>
     <button class="btn-ghost" onclick="openSettings()" title="Settings"><span class="ico">⚙</span></button>
     <button class="btn-ghost" onclick="openHelp()" title="How this works"><span class="ico">?</span></button>
@@ -319,11 +327,27 @@
 <div class="footer-note">
   <span id="srcNote"></span>
   <div class="spacer"></div>
-  <button class="btn-dash" id="dashBtn" onclick="openDashboard()" style="display:none"><span class="ico">📊</span> Dashboard</button>
 </div>
 
 <div class="toast-wrap" id="toasts"></div>
 <div id="ktt"></div>
+
+<!-- ===== Next step after rules load: import a timesheet ===== -->
+<div class="overlay" id="tsOverlay" onclick="if(event.target===this)closeTimesheetPrompt()">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-head">
+      <div class="mark" style="width:30px;height:30px;border-radius:8px;font-size:16px;background:linear-gradient(135deg,var(--accent-hi),var(--accent-lo));color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-weight:700">＋</div>
+      <h3>Now import your timesheet</h3>
+    </div>
+    <div class="modal-body">
+      <p>Your KRAs and rules are loaded. Next, import your HaloPSA <strong>timesheet CSV</strong> — tickets you've categorised before are filed automatically, along with Quick Time, presales and SO project entries.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeTimesheetPrompt()">Later</button>
+      <button class="btn-primary" onclick="pickTimesheet()">Import timesheet…</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== Startup import prompt ===== -->
 <div class="overlay" id="startOverlay" onclick="if(event.target===this)startFresh()">
@@ -362,11 +386,12 @@
     <div class="modal-head">
       <div class="mark" style="width:30px;height:30px;border-radius:8px;font-size:16px;background:linear-gradient(135deg,var(--accent-hi),var(--accent-lo));color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-weight:700">📊</div>
       <h3>KRA Hours Dashboard</h3>
-      <div class="spacer"></div>
-      <div class="seg" id="granSeg">
+      <div class="seg" id="granSeg" style="margin-left:12px">
         <button data-g="day">Day</button><button data-g="week">Week</button>
-        <button data-g="month">Month</button><button data-g="quarter" class="active">Quarter</button>
+        <button data-g="month">Month</button><button data-g="quarter" class="active">Quarter</button><button data-g="year">Year</button>
       </div>
+      <div class="spacer"></div>
+      <div class="period-nav" id="periodNav"></div>
       <button onclick="exportXlsx()" class="btn-primary"><span class="ico">⤓</span> Export XLSX</button>
       <button onclick="exportDashImage()" class="btn-primary" title="Save the dashboard (both charts) as a PNG image"><span class="ico">🖼</span> Export image</button>
       <button class="btn-ghost" onclick="closeDashboard()">✕</button>
@@ -388,7 +413,7 @@
         <li><strong>Import Timesheet</strong> — your HaloPSA CSV; confirm the week's Monday date when asked.</li>
         <li><strong>Drag</strong> a ticket from the left into a KRA to file it and create a rule for future imports. Click a KRA to expand it.</li>
         <li><strong>“Quick Time”</strong> entries file themselves automatically, split into a KRA per sub-type (Internal Meeting, Peer Support, Training, etc).</li>
-        <li><strong>Dashboard</strong> (bottom-centre) — hours per KRA for a selected day / week / month / quarter (defaults to the current one, ◀ ▶ to step), shown as avg / week by default, plus a monthly trend line per KRA (click legend items to show / hide). Export to XLSX or as an image.</li>
+        <li><strong>View Dashboard</strong> (top bar) — hours per KRA for a selected day / week / month / quarter / year (defaults to the current one, ◀ ▶ to step), shown as avg / week by default, plus a monthly trend line per KRA (click legend items to show / hide). Export to XLSX or as an image.</li>
         <li><strong>Export Rules</strong> — the button highlights when you have unsaved changes; save over your rules file to keep them.</li>
       </ol>
     </div>
@@ -487,12 +512,28 @@ function ensureQuickTimeCategory(subName){
   return c.id;
 }
 function isQuickTime(t){ return /quick\s*time/i.test(t.description||''); }
-function autoClassifyQuickTime(){
-  const targets=Object.values(state.tickets).filter(t=>!state.rules[t.ticketId]&&isQuickTime(t));
-  if(!targets.length) return 0;
-  targets.forEach(t=>{ state.rules[t.ticketId]=ensureQuickTimeCategory(quickTimeSubName(t)); });
-  return targets.length;
+/* Keyword pre-coding, applied after Quick Time to tickets that have no rule yet. First match wins,
+   so an "SO …" line that says Pre-Sales lands in Consulting Presales. The KRA is only created
+   (or an existing one with the same name reused) when a ticket actually matches. */
+const AUTO_RULES=[
+  {kra:'Consulting Presales', test:d=>/\b(RFP|SoW|LoE|Technical Qualification|High Level Sales Estimate|Pre[-\s]?sales)\b/i.test(d)},
+  {kra:'Project Delivery',    test:d=>/^\s*SO(?![A-Za-z])/.test(d)}   // ticket name starts with "SO" in capitals, e.g. "SO 2396 - …"
+];
+function ensureCategoryByName(name){
+  let c=state.categories.find(x=>x.name.trim().toLowerCase()===name.toLowerCase());
+  if(!c){ c={id:uid(),name,color:nextColor()}; state.categories.push(c); }
+  return c.id;
 }
+/* Returns how many tickets were filed: total, Quick Time, and per keyword KRA */
+function autoClassifyAll(){
+  const res={qt:0,total:0,byKra:{}};
+  Object.values(state.tickets).forEach(t=>{ if(state.rules[t.ticketId]) return;
+    if(isQuickTime(t)){ state.rules[t.ticketId]=ensureQuickTimeCategory(quickTimeSubName(t)); res.qt++; res.total++; return; }
+    const r=AUTO_RULES.find(r=>r.test(t.description||'')); if(!r) return;
+    state.rules[t.ticketId]=ensureCategoryByName(r.kra); res.byKra[r.kra]=(res.byKra[r.kra]||0)+1; res.total++; });
+  return res;
+}
+function autoMsg(a){ const parts=[]; if(a.qt) parts.push(`${a.qt} Quick Time`); Object.entries(a.byKra).forEach(([k,n])=>parts.push(`${n} ${k}`)); return parts.length?`, auto-filed ${parts.join(', ')}`:''; }
 
 /* ---------- CSV import ---------- */
 let pendingImport=null;
@@ -543,12 +584,12 @@ function finalizeImport(weekStart){
     resolved.forEach(rc=>{ const v=parseFloat(row[rc.col]); if(!isNaN(v)&&v!==0){ daySum+=v; state.entries[`${ticketId}|${rc.date}`]={ticketId,date:rc.date,hours:v}; } });
     if(daySum===0&&ci.total>=0){ const tv=parseFloat(row[ci.total]); if(!isNaN(tv)&&tv>0){ const d=resolved.length?resolved[0].date:(weekStart?toISO(weekStart):null); if(d) state.entries[`${ticketId}|${d}`]={ticketId,date:d,hours:tv}; } }
   }
-  const qt=autoClassifyQuickTime();
+  const ac=autoClassifyAll();
   if(!state.meta.created) state.meta.created=new Date().toISOString();
-  if(qt>0) markDirty(); render();
+  if(ac.total>0) markDirty(); render();
   let msg=`Imported ${fname?('“'+fname+'”'):'timesheet'}: ${added} new ticket${added!==1?'s':''}`;
   if(auto>0) msg+=`, ${auto} auto-categorised by rules`;
-  if(qt>0) msg+=`, ${qt} Quick Time filed automatically`;
+  msg+=autoMsg(ac);
   toast(msg,'ok');
 }
 
@@ -574,12 +615,12 @@ function finalizeEntryImport(){
     sums[key].hours+=hrs;
   });
   Object.entries(sums).forEach(([key,e])=>{ state.entries[key]=e; });
-  const qt=autoClassifyQuickTime();
+  const ac=autoClassifyAll();
   if(!state.meta.created) state.meta.created=new Date().toISOString();
-  if(qt>0) markDirty(); render();
+  if(ac.total>0) markDirty(); render();
   let msg=`Imported ${fname?('“'+fname+'”'):'timesheet'}: ${added} new ticket${added!==1?'s':''}`;
   if(auto>0) msg+=`, ${auto} auto-categorised by rules`;
-  if(qt>0) msg+=`, ${qt} Quick Time filed automatically`;
+  msg+=autoMsg(ac);
   toast(msg,'ok');
 }
 
@@ -594,9 +635,10 @@ function parseCSV(text){ const rows=[];let row=[],field='',i=0,inQ=false; text=t
 
 /* ---------- Rules JSON import / export ---------- */
 function onRulesFile(ev){ const f=ev.target.files[0]; if(!f)return; const r=new FileReader();
-  r.onload=()=>{ try{ const data=JSON.parse(r.result); mergeConfig({categories:data.categories,rules:data.rules,ui:data.ui,meta:data.meta},false); const qt=autoClassifyQuickTime(); clearDirty(); render(); closeStart();
+  r.onload=()=>{ try{ const data=JSON.parse(r.result); mergeConfig({categories:data.categories,rules:data.rules,ui:data.ui,meta:data.meta},false); const ac=autoClassifyAll(); clearDirty(); if(ac.total>0) markDirty(); render(); closeStart();
     const nc=(data.categories||[]).length,nr=data.rules?(Array.isArray(data.rules)?data.rules.length:Object.keys(data.rules).length):0;
-    let m=`Loaded ${nc} categor${nc===1?'y':'ies'} and ${nr} rule${nr!==1?'s':''}`; if(qt>0)m+=`, ${qt} Quick Time filed`; toast(m,'ok'); }
+    toast(`Loaded ${nc} categor${nc===1?'y':'ies'} and ${nr} rule${nr!==1?'s':''}`+autoMsg(ac),'ok');
+    if(!Object.keys(state.tickets).length) openTimesheetPrompt(); }
     catch(e){ toast('That file is not valid JSON: '+e.message,'err'); } };
   r.readAsText(f); ev.target.value=''; }
 
@@ -789,17 +831,15 @@ function hideKtt(){ const tt=document.getElementById('ktt'); if(tt)tt.style.disp
   b.addEventListener('mouseout',e=>{ if(e.target.closest('.kra-hover')) hideKtt(); }); })();
 
 function renderDashboard(){
-  const body=document.getElementById('dashBody');
-  if(Object.keys(state.entries).length===0){ body.innerHTML=`<div class="empty"><b>No data yet</b>Import a timesheet to see hours by KRA.</div>`; return; }
+  const body=document.getElementById('dashBody'); const navEl=document.getElementById('periodNav');
+  if(Object.keys(state.entries).length===0){ navEl.innerHTML=''; body.innerHTML=`<div class="empty"><b>No data yet</b>Import a timesheet to see hours by KRA.</div>`; return; }
   const metric=state.ui.dashMetric||'avgweek';
 
   // Period picker
   const {list}=dashPeriodList(); const selKey=selectedDashKey(); const idx=list.findIndex(p=>p.key===selKey);
-  const nav=`<div class="period-nav">
-    <button class="navbtn" title="Previous ${dashGran}" onclick="stepDashPeriod(-1)" ${idx<=0?'disabled':''}>◀</button>
+  navEl.innerHTML=`<button class="navbtn" title="Previous ${dashGran}" onclick="stepDashPeriod(-1)" ${idx<=0?'disabled':''}>◀</button>
     <select class="mini-select" onchange="setDashPeriod(this.value)">${list.map(p=>`<option value="${esc(p.key)}" ${p.key===selKey?'selected':''}>${esc(p.label)}</option>`).join('')}</select>
-    <button class="navbtn" title="Next ${dashGran}" onclick="stepDashPeriod(1)" ${idx>=list.length-1?'disabled':''}>▶</button>
-  </div>`;
+    <button class="navbtn" title="Next ${dashGran}" onclick="stepDashPeriod(1)" ${idx>=list.length-1?'disabled':''}>▶</button>`;
 
   // Aggregates for the selected period only
   const {agg,pc,rows,grand,weeksLogged}=dashPeriodAgg(metric); const totals=agg.totals; const w={size:weeksLogged};
@@ -810,7 +850,6 @@ function renderDashboard(){
     ${dcard('KRAs',state.categories.length,'teal')}
     ${dcard('Weeks logged',w.size)}
     ${dcard('Categorised',grand>0?Math.round((grand-uncatTot)/grand*100)+'%':'0%','accent')}
-    ${nav}
   </div>`;
 
   const metricOpts=[['total','Total hours'],['avgmonth','Avg / month'],['avgweek','Avg / week'],['avgday','Avg / day'],['count','Ticket count'],['name','Name A–Z']];
@@ -837,7 +876,10 @@ function trendData(){
   const idx={}; months.forEach((mo,i)=>idx[mo.key]=i);
   const vals={}; Object.values(state.entries).forEach(e=>{ const cid=state.rules[e.ticketId]; if(!cid||!e.date) return;
     (vals[cid]||(vals[cid]=months.map(()=>0)))[idx[e.date.slice(0,7)]]+=e.hours; });
-  const series=state.categories.filter(c=>vals[c.id]).map(c=>({id:c.id,name:c.name,color:c.color,vals:vals[c.id]}));
+  // Legend order: avg hours / week in the dashboard's selected period (highest first), then all-time hours
+  const {agg:pa,pc:pp}=dashPeriodAgg('total'); const perWk=id=>(pa.totals[id]||0)/pp.nWeeks, sumAll=a=>a.reduce((s,v)=>s+v,0);
+  const series=state.categories.filter(c=>vals[c.id]).map(c=>({id:c.id,name:c.name,color:c.color,vals:vals[c.id]}))
+    .sort((a,b)=>perWk(b.id)-perWk(a.id)||sumAll(b.vals)-sumAll(a.vals));
   // months covered by the dashboard's selected period (shaded)
   const sk=selectedDashKey(); let selM;
   if(dashGran==='week'){ const mon=parseISO(sk); selM=[sk.slice(0,7),toISO(addDays(mon,6)).slice(0,7)]; }
@@ -865,6 +907,7 @@ function trendHtml(){
   const head=`<div class="barchart-head trend-head"><h4>Monthly hours by KRA</h4><span class="sub">Shaded = selected ${dashGran}${td.curIdx!==undefined?' · current month is month-to-date':''}</span></div>`;
   if(!td.series.length) return head+`<div class="empty"><b>No categorised hours yet</b>Assign tickets to KRAs to see monthly trends.</div>`;
   const W=1000,H=320,g=trendLayout(td,W,H); const fmt=v=>Number.isInteger(v)?v:v.toFixed(1);
+  const {agg:pa,pc:pp}=dashPeriodAgg('total'); const perWkOf=id=>(pa.totals[id]||0)/pp.nWeeks;
   let s=`<svg viewBox="0 0 ${W} ${H}" class="trend-svg" role="img" aria-label="Monthly hours by KRA">`;
   td.sel.forEach((on,i)=>{ if(on) s+=`<rect class="selband" x="${Math.max(g.L,g.x(i)-g.half)}" y="${g.T}" width="${Math.min(g.x(i)+g.half,W-g.R)-Math.max(g.L,g.x(i)-g.half)}" height="${g.ih}"/>`; });
   g.ticks.forEach(v=>{ s+=`<line class="grid" x1="${g.L}" x2="${W-g.R}" y1="${g.y(v)}" y2="${g.y(v)}"/><text class="ylab" x="${g.L-8}" y="${g.y(v)+4}">${fmt(v)}</text>`; });
@@ -873,7 +916,7 @@ function trendHtml(){
     s+=`<g class="ln" data-id="${se.id}" onmouseenter="trendHl('${se.id}')" onmouseleave="trendHl(null)"><polyline points="${pts}" stroke="${se.color}"/>`+
       se.vals.map((v,i)=>`<circle cx="${g.x(i)}" cy="${g.y(v)}" r="3.2" fill="${se.color}"><title>${esc(se.name)} — ${esc(td.months[i].label)}: ${fmtHrs(v)} h</title></circle>`).join('')+`</g>`; });
   s+=`</svg>`;
-  const legend=`<div class="trend-legend">${td.series.map(se=>`<button class="lg ${trendHidden.has(se.id)?'off':''}" onclick="trendToggle('${se.id}')" onmouseenter="trendHl('${se.id}')" onmouseleave="trendHl(null)" title="Click to show / hide"><span class="sw" style="background:${se.color}"></span>${esc(se.name)}</button>`).join('')}
+  const legend=`<div class="trend-legend">${td.series.map(se=>`<button class="lg ${trendHidden.has(se.id)?'off':''}" onclick="trendToggle('${se.id}')" onmouseenter="trendHl('${se.id}')" onmouseleave="trendHl(null)" title="${fmtHrs(perWkOf(se.id))} h/wk in the selected ${dashGran} — click to show / hide"><span class="sw" style="background:${se.color}"></span>${esc(se.name)}</button>`).join('')}
     <span class="lg-tools"><a onclick="trendAll(true)">All</a> · <a onclick="trendAll(false)">None</a></span></div>`;
   return head+`<div class="trend">${s}</div>`+legend;
 }
@@ -1069,13 +1112,16 @@ function resetAll(){ if(!confirm('Clear ALL data — imported tickets, KRAs and 
 function openImportPrompt(){ document.getElementById('startOverlay').classList.add('show'); }
 function closeStart(){ document.getElementById('startOverlay').classList.remove('show'); }
 function startFresh(){ closeStart(); }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeHelp(); closeDashboard(); closeStart(); closeSettings(); if(document.getElementById('weekOverlay').classList.contains('show'))cancelWeek(); } });
+function openTimesheetPrompt(){ document.getElementById('tsOverlay').classList.add('show'); }
+function closeTimesheetPrompt(){ document.getElementById('tsOverlay').classList.remove('show'); }
+function pickTimesheet(){ closeTimesheetPrompt(); document.getElementById('csvInput').click(); }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeHelp(); closeDashboard(); closeStart(); closeTimesheetPrompt(); closeSettings(); if(document.getElementById('weekOverlay').classList.contains('show'))cancelWeek(); } });
 
 /* ---------- Boot ---------- */
 (async function init(){
   const loaded=await tryLoadSameFolder();   // only succeeds when served locally with the config beside it
   render();
-  if(loaded && state.categories.length>0){ clearDirty(); }
+  if(loaded && state.categories.length>0){ clearDirty(); if(!Object.keys(state.tickets).length) openTimesheetPrompt(); }
   else { openImportPrompt(); }
 })();
 </script>
