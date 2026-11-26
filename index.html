@@ -516,7 +516,7 @@ function isQuickTime(t){ return /quick\s*time/i.test(t.description||''); }
    so an "SO …" line that says Pre-Sales lands in Consulting Presales. The KRA is only created
    (or an existing one with the same name reused) when a ticket actually matches. */
 const AUTO_RULES=[
-  {kra:'Consulting Presales', test:d=>/\b(RFP|SoW|LoE|Technical Qualification|High Level Sales Estimate|Pre[-\s]?sales|Roadmap\w*)\b/i.test(d)},
+  {kra:'Consulting Presales', test:d=>/\b(RFP|SoW|LoE|Technical Qualification|High Level Sales Estimate|HLSE|Pre[-\s]?sales|Roadmap\w*)\b/i.test(d)},
   {kra:'Project Delivery',    test:d=>/^\s*SO(?![A-Za-z])/.test(d)}   // ticket name starts with "SO" in capitals, e.g. "SO 2396 - …"
 ];
 function ensureCategoryByName(name){
